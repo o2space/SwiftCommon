@@ -21,7 +21,6 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		0B346C9A249CCC110059AE26 /* O2SCoreKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 0B346C98249CCC110059AE26 /* O2SCoreKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0B346CA7249CCE9D0059AE26 /* O2SCDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B346CA6249CCE9D0059AE26 /* O2SCDevice.swift */; };
 		0B346CA924A04B150059AE26 /* O2SCCrypt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B346CA824A04B150059AE26 /* O2SCCrypt.swift */; };
 		0B346CAB24A04CAA0059AE26 /* O2SCBytes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B346CAA24A04CAA0059AE26 /* O2SCBytes.swift */; };
@@ -46,7 +45,6 @@
 
 /* Begin PBXFileReference section */
 		0B346C95249CCC110059AE26 /* O2SCoreKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = O2SCoreKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		0B346C98249CCC110059AE26 /* O2SCoreKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = O2SCoreKit.h; sourceTree = "<group>"; };
 		0B346C99249CCC110059AE26 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0B346CA6249CCE9D0059AE26 /* O2SCDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = O2SCDevice.swift; sourceTree = "<group>"; };
 		0B346CA824A04B150059AE26 /* O2SCCrypt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = O2SCCrypt.swift; sourceTree = "<group>"; };
@@ -112,7 +110,6 @@
 		0B346C97249CCC110059AE26 /* O2SCoreKit */ = {
 			isa = PBXGroup;
 			children = (
-				0B346C98249CCC110059AE26 /* O2SCoreKit.h */,
 				0B346CD924A0E17B0059AE26 /* O2SCSelfAware.swift */,
 				0B346CB624A0A58E0059AE26 /* Extension */,
 				0B346CA5249CCE490059AE26 /* Utils */,
@@ -175,7 +172,6 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0B346C9A249CCC110059AE26 /* O2SCoreKit.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

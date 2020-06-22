@@ -26,9 +26,6 @@ public enum O2SCIPVersion : Int {
     case ipv6   = 1
 }
 
-
-// duid、cputype、wifiLevel未实现
-
 public class O2SCDevice {
     private static let networkInfo:CTTelephonyNetworkInfo = {
         return CTTelephonyNetworkInfo()
@@ -429,7 +426,6 @@ public class O2SCDevice {
     /// 获取无线局域网的强度
     /// 强度系数 3: 强 ，2：中， 1：弱 ，0：无
     public static func wifiLevel() -> Int {
-        //FIXME: 未实现
         var signalStrength = 1
         let isIOS12Later = (O2SCDevice.versionCompare("12.0") != .orderedAscending)
         if isIOS12Later {
