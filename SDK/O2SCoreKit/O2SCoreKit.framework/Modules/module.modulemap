@@ -1,0 +1,6 @@
+framework module O2SCoreKit {
+  umbrella header "O2SCoreKit.h"
+
+  export *
+  module * { export * }
+}
