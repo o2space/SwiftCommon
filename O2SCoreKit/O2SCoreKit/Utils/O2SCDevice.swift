@@ -21,6 +21,14 @@ public enum O2SCNetworkType : Int {
     case Cellular5G     = 6 // 5G网络
 }
 
+public enum O2SCCarrierType: Int {
+    case None           = -1 // 无运营商
+    case Unkown         = 0  // 未知
+    case Mobile         = 1  // 移动
+    case Union          = 2  // 联通
+    case Telecom        = 3  // 电信
+}
+
 public enum O2SCIPVersion : Int {
     case ipv4   = 0
     case ipv6   = 1
@@ -37,10 +45,17 @@ public class O2SCDevice {
         return data
     }()
     
+    
+    /// 是否使用了iOS13 Scene App
+    public static let isSceneApp:Bool = {
+        var isSceneApp:Bool = false
+        isSceneApp = O2SCDevice._checkIsSceneApp()
+        return isSceneApp
+    }()
+    
     private static let jailbreak_apps = [ "/Applications/Cydia.app","/Applications/limera1n.app","/Applications/greenpois0n.app","/Applications/blackra1n.app","/Applications/blacksn0w.app","/Applications/redsn0w.app",]
     
     //MARK: - Public Func
-    
     
     /// 获取网卡物理地址
     public static func macAddress() -> String {
@@ -62,30 +77,6 @@ public class O2SCDevice {
         } catch {
             return networkType
         }
-        
-//        debugPrint(reachability.connection.description)
-        
-//        // 网络变化
-//        // 网络可用或切换网络类型时执行
-//        reachability.whenReachable = {reachability in
-//            if reachability.connection == .wifi {
-//
-//            } else {
-//
-//            }
-//        }
-//        // 网络不可用时执行
-//        reachability.whenUnreachable = {reachability in
-//
-//        }
-//
-//        do {
-//            // 开始监听
-//            try reachability.startNotifier()
-//        } catch {
-//
-//        }
-        
         
         switch reachability.connection {
         case .unavailable:
@@ -149,6 +140,83 @@ public class O2SCDevice {
             return carrier.mobileNetworkCode ?? ""
         }
         return ""
+    }
+    
+    
+    /// 获取当前设备使用的运营商（包括双卡手机 当前正在使用哪张卡）
+    public static func carrierType() -> O2SCCarrierType {
+        
+          if let keyWindow = O2SCDevice.keyWindow() {
+            if O2SCDevice.versionCompare("13.0") == ComparisonResult.orderedDescending || O2SCDevice.versionCompare("13.0") == ComparisonResult.orderedSame {
+                let windowSceneSEL = NSSelectorFromString("windowScene")
+                if let windowScene = O2SCRuntime.to_obj(instance: keyWindow, selector: windowSceneSEL) {
+                    let statusBarManagerSEL = NSSelectorFromString("statusBarManager")
+                    if let manager = O2SCRuntime.to_obj(instance: windowScene, selector: statusBarManagerSEL) {
+                        let createLocalStatusBarSEL = NSSelectorFromString("createLocalStatusBar")
+                        if let localStatusBar = O2SCRuntime.to_obj(instance: manager, selector: createLocalStatusBarSEL) {
+                            let statusBarSEL = NSSelectorFromString("statusBar")
+                            if let statusBar = O2SCRuntime.to_obj(instance: localStatusBar, selector: statusBarSEL) {
+                                if statusBar.isKind(of: NSClassFromString("UIStatusBar_Modern")!) {
+                                    if let curData = statusBar.value(forKeyPath: "statusBar.currentData.cellularEntry.string") {
+                                        return self.carrierTypeWithName(curData)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        let telephonyInfo:CTTelephonyNetworkInfo = CTTelephonyNetworkInfo()
+        if O2SCDevice.versionCompare("13.0") == ComparisonResult.orderedAscending {
+            if let dic =  O2SCRuntime.to_obj(instance: telephonyInfo, selector: NSSelectorFromString("serviceSubscriberCellularProviders")) as? Dictionary<String, Any> {
+                if dic.count == 2 {
+                    let app:UIApplication = UIApplication.shared
+                    if let statusBar = app.value(forKeyPath: "statusBar") as? AnyObject {
+                        if statusBar.isKind(of: NSClassFromString("UIStatusBar_Modern")!) {
+                            if let curData = statusBar.value(forKeyPath: "statusBar.currentData.cellularEntry.string") {
+                                return self.carrierTypeWithName(curData)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        
+        guard let code:String = self.carrier(), code.count > 0 else {
+            return O2SCCarrierType.None
+        }
+        
+        if code == "46000" || code == "46002" || code == "46007" {
+           return O2SCCarrierType.Mobile
+        } else if code == "46001" || code == "46006" || code == "46009" {
+            return O2SCCarrierType.Union
+        } else if code == "46003" || code == "46005" || code == "46011" {
+            return O2SCCarrierType.Telecom
+        } else {
+            let name = self.carrierName()
+            return self.carrierTypeWithName(name)
+        }
+        
+        return O2SCCarrierType.Unkown
+    }
+    
+    static func carrierTypeWithName(_ typeName:Any) -> O2SCCarrierType {
+        guard let name = typeName as? String, name.contains("无SIM卡") else {
+            return O2SCCarrierType.None
+        }
+        if  name.contains("联通") ||  name.contains("聯通") {
+            return O2SCCarrierType.Union
+        }
+        if  name.contains("移动") ||  name.contains("移動") {
+            return O2SCCarrierType.Mobile
+        }
+        if  name.contains("电信") ||  name.contains("電信") {
+            return O2SCCarrierType.Telecom
+        }
+        return O2SCCarrierType.Unkown
     }
     
     
@@ -294,7 +362,7 @@ public class O2SCDevice {
     }
     
     /// 获取设备IP地址
-    /// - Parameter ver:
+    /// - Parameter ver: 目前未使用
     public static func ipAddress(_ ver:O2SCIPVersion)  -> String? {
         var address: String?
         
@@ -426,17 +494,43 @@ public class O2SCDevice {
     /// 获取无线局域网的强度
     /// 强度系数 3: 强 ，2：中， 1：弱 ，0：无
     public static func wifiLevel() -> Int {
-        var signalStrength = 1
-        let isIOS12Later = (O2SCDevice.versionCompare("12.0") != .orderedAscending)
-        if isIOS12Later {
-            return signalStrength
-        }
         
-        let app = UIApplication.shared
-        //解析
         let sbar_s = O2SCCrypt.stringByBase64DecodeString("cnZicCVjYlEy", mask: base64Mask)//statusBar
         let psbar_s = O2SCCrypt.stringByBase64DecodeString("XnF3ZSRlU3IhIg==", mask: base64Mask)//_statusBar
         let sbarmodern_s = O2SCCrypt.stringByBase64DecodeString("VEtQcDFkVUMCMXNdTms0dVJe", mask: base64Mask)//UIStatusBar_Modern
+        
+        let clsbar_s = O2SCCrypt.stringByBase64DecodeString("YnBmZSR1bF8jMW1Rd2UkZVNyISI=", mask: base64Mask) //createLocalStatusBar
+        let wifi_s = O2SCCrypt.stringByBase64DecodeString("cnZicCVjYlEyfmJ3cXY1flR0ISRgLHRtNnllXjQieCxnbSNgTFE5BmBudmE=", mask: base64Mask) //statusBar.currentData.wifiEntry.displayValue
+        
+        var signalStrength = 1
+        let isIOS13Later = (O2SCDevice.versionCompare("13.0") != .orderedAscending)
+        if isIOS13Later {
+            if let keyWindow = O2SCDevice.keyWindow() {
+                let windowSceneSEL = NSSelectorFromString("windowScene")
+                if let windowScene = O2SCRuntime.to_obj(instance: keyWindow, selector: windowSceneSEL) {
+                    let statusBarManagerSEL = NSSelectorFromString("statusBarManager")
+                    if let manager = O2SCRuntime.to_obj(instance: windowScene, selector: statusBarManagerSEL) {
+                        let createLocalStatusBarSEL = NSSelectorFromString(clsbar_s!)
+                        if let localStatusBar = O2SCRuntime.to_obj(instance: manager, selector: createLocalStatusBarSEL) {
+                            let statusBarSEL = NSSelectorFromString(sbar_s!)
+                            if let statusBar = O2SCRuntime.to_obj(instance: localStatusBar, selector: statusBarSEL) {
+                                if statusBar.isKind(of: NSClassFromString(sbarmodern_s!)!) {
+                                    if let curData = statusBar.value(forKeyPath: wifi_s!) as? Int  {
+                                        return curData
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return signalStrength
+        }
+        
+        //iOS13以前
+        let app = UIApplication.shared
+        //解析
         let currentadata_s = O2SCCrypt.stringByBase64DecodeString("XmF2diJ1TkQBN2ZwZmMxZEVUBDF1Yw==", mask: base64Mask)//_currentAggregatedData
         let pwifientry_s = O2SCCrypt.stringByBase64DecodeString("XnVqYjlVTkQyKQ==", mask: base64Mask)//_wifiEntry
         let pdisvalue_s = O2SCCrypt.stringByBase64DecodeString("ZWtwdDxxWWYhPHRn", mask: base64Mask)//displayValue
@@ -482,6 +576,23 @@ public class O2SCDevice {
         return signalStrength
     }
     
+    
+    /// 获取window 此方法调用不能
+    public static func keyWindow() -> UIWindow? {
+        var window:UIWindow? = nil
+        if #available(iOS 13.0, *) {
+            for windowScene:UIWindowScene in (UIApplication.shared.connectedScenes as? Set<UIWindowScene>)! {
+                if windowScene.activationState == .foregroundActive {
+                    window = windowScene.windows.last
+                    break
+                }
+            }
+        } else {
+            window = UIApplication.shared.keyWindow
+        }
+        return window
+    }
+    
     //MARK: - Private Func
     
     private static func _getSysInfoByName(_ typeSpecifier:String) -> String {
@@ -512,5 +623,43 @@ public class O2SCDevice {
             }
         }
         return SSIDInfo
+    }
+    
+    private static func _checkIsSceneApp() -> Bool {
+        guard O2SCDevice.versionCompare("13.0") != ComparisonResult.orderedAscending else {
+            return false
+        }
+        
+        guard let bundlePath = Bundle.main.path(forResource: "Info", ofType: "plist") else {
+            return false
+        }
+        
+        guard let infoDict = NSMutableDictionary(contentsOfFile: bundlePath) as? Dictionary<String, Any> else {
+            return false
+        }
+        
+        if let sceneManifest = infoDict["UIApplicationSceneManifest"] as? Dictionary<String, Any> {
+            if let supportsMiltipleScenes = sceneManifest["UIApplicationSupportsMultipleScenes"] as? Int {
+                if supportsMiltipleScenes == 1 {
+                    return true
+                } else {
+                    if let configurationDic = sceneManifest["UISceneConfigurations"] as? [String:Any], configurationDic.count > 0 {
+                        let keys = ["UIWindowSceneSessionRoleApplication","UIWindowSceneSessionRoleExternalDisplay","CPTemplateApplicationSceneSessionRoleApplication"]
+                        let isValue: (String) -> Bool = {name in
+                            if let role = configurationDic[name] as? Array<Any>, role.count > 0 {
+                                return true
+                            }
+                            return false
+                        }
+                        for key in keys {
+                            if isValue(key) {
+                                return true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false
     }
 }
