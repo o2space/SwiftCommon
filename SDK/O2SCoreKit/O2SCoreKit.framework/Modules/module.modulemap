@@ -1,6 +1,4 @@
 framework module O2SCoreKit {
-  umbrella header "O2SCoreKit.h"
-
-  export *
-  module * { export * }
+  header "O2SCoreKit-Swift.h"
+  requires objc
 }
